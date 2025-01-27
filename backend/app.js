@@ -1,9 +1,13 @@
 const cors=require('cors')
+const mul=require('multer')
 const corsOpt=require('./config/corsOpt')
 const express=require('express')
 const app=express()
 
 const {
+    deleteFile,
+    semesterRegistration,
+    uploadFile,
     addNewFeedbackForm,
     changeFeedbackFormState,
     unsubmitAssignment,
@@ -32,6 +36,23 @@ const {
 
 app.use(cors(corsOpt))
 app.use(express.json())
+
+const storage=mul.diskStorage({
+    destination: function(res,file,cb){
+        cb(null,"../../my-app-3/public/")
+    },
+    filename: function(req,file,cb){
+        cb(null, file.originalname)
+    }
+
+})
+const upload=mul({storage})
+
+app.delete("/api/json/deletefile/:fname",deleteFile)
+
+app.post('/api/json/semeterregistration',upload.array('files',5),semesterRegistration)
+
+app.post('/api/json/uploadfile',upload.single('file'),uploadFile)
 
 app.post("/api/json/addnewfeedbackform",addNewFeedbackForm)
 

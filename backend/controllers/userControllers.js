@@ -1,7 +1,9 @@
 const con=require('../models/MysqlConnect')
+const papa=require('papaparse')
+const fs=require('fs')
 const assignments=require('../models/Assignments')
 const {handleUser}=require('./authContoller');
-const { parse } = require('dotenv');
+const { json } = require('stream/consumers');
 con.connect(error => {
     if (error) {
         console.error('Error connecting to the database:', error);
@@ -9,6 +11,38 @@ con.connect(error => {
     }
     console.log('Connected to the MySQL database');
 });
+
+const deleteFile=(req,res)=>{
+    const {fname}=req.params
+    const fpath=`../../my-app-3/public/${fname}`
+    fs.unlink(fpath,(err)=>{
+        if(err){
+            res.json({message: err})
+        }
+        else{
+            res.json({message: "File Deleted Sucessfully"})
+        }
+    })
+}
+
+const semesterRegistration=(req,res)=>{
+    for(k in req.files){
+        const fToC=`../${req.files[k].filename}`
+        const file=fs.createReadStream(fToC)
+        papa.parse(file,{
+            header: false,
+            dynamicTyping: true,
+            complete: function(res){
+                console.log(res.data)
+            }
+        })
+    }
+    res.json()
+}
+
+const uploadFile=(req,res)=>{
+    res.json({message: "Upload Successful"})      
+}
 
 const addNewFeedbackForm=(req,res)=>{
     const toPost=req.body
@@ -602,7 +636,7 @@ const getAssignmentDetails=(req,res)=>{
     const{user,subid,asgnnum}=req.params
     const asgn=asgnnum.slice(asgnnum.length-1)
     let query=`
-    select submission_date from assignment_submission1 asub
+    select submission_date,assignment_file_name from assignment_submission1 asub
     inner join assignment_system_student st on st.student_id=asub.student_id
     inner join assignment_allocation1 aa on aa.f_assignment_id=asub.f_assignment_id
     inner join merge m on m.merge_id=aa.merge_id
@@ -620,9 +654,9 @@ const getAssignmentDetails=(req,res)=>{
 }
 
 const updateAssignmentDetails=(req,res)=>{
-    const{subId,username,submissionDate,deadlineDate,asgn}=req.body
+    const{subId,username,submissionDate,deadlineDate,asgn,fileName}=req.body
     let query=`
-    call update_allocation("${deadlineDate}","${submissionDate}","${username}","${subId}","${asgn}");
+    call update_allocation("${deadlineDate}","${submissionDate}","${username}","${subId}","${asgn}","${fileName}");
     `
     
     con.query(query,(error,result)=>{
@@ -661,6 +695,9 @@ const removeCurrentUser=(req,res)=>{
 }
 
 module.exports={
+    deleteFile,
+    semesterRegistration,
+    uploadFile,
     addNewFeedbackForm,
     changeFeedbackFormState,
     unsubmitAssignment,

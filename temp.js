@@ -1,10 +1,12 @@
+const papa=require('papaparse')
+const fs=require('fs')
 const mysql=require('mysql2')
 const con=mysql.createConnection(
     {
         host: 'localhost',
         user: 'root',
         password: 'NRM@@@#@!%',
-        database: 'mini'
+        database: 'vans'
 });
 
 con.connect(error => {
@@ -349,23 +351,67 @@ con.connect(error => {
 // console.log(query)
 
 
-const query=`
-select * from merge where cast(merge_id as signed)<=23;
-`
-con.query(query,(error,result)=>{
-    if(error){
-        console.log(error)
-    }
-    else{
-        let stmt=`insert into merge values\n`
-        let num=70
-        for(let i=0;i<result.length;i++){
-            stmt=stmt+`('${num}','${result[i].class_id}','${result[i].subject_id}','${result[i].faculty_id}','2025-26','2')${i===result.length-1?";":","}\n`
-            num++
+// const query=`
+// select * from merge where cast(merge_id as signed)<=23;
+// `
+// con.query(query,(error,result)=>{
+//     if(error){
+//         console.log(error)
+//     }
+//     else{
+//         let stmt=`insert into merge values\n`
+//         let num=70
+//         for(let i=0;i<result.length;i++){
+//             stmt=stmt+`('${num}','${result[i].class_id}','${result[i].subject_id}','${result[i].faculty_id}','2025-26','2')${i===result.length-1?";":","}\n`
+//             num++
+//         }
+//         console.log(stmt)
+//     }
+// })
+
+// let query=`select * from prac;`
+
+// con.query(query,(err,res)=>{
+//     if(err){
+//         console.log(err)
+//     }
+//     else{
+//         console.log(res[4]['question_desc'])
+
+//     }
+// })
+
+
+const file="./Questions.csv"
+
+const f=fs.createReadStream(file)
+
+let query="insert into prac values\n"
+
+let k=0
+
+papa.parse(f,{
+    header: false,
+    dynamicTyping: true,
+    complete: function(res){
+        let str=res.data[0][1]
+        for(let i=0;i<res.data.length;i++){
+            if(res.data[i][0]===null){
+                if(res.data[i][1]!==null){
+                    str=str+"\n"+res.data[i][1]
+                }
+            }
+            else{
+                k++
+                query=query+`(${k},'${str}')${i===res.data.length-1?';':','}\n`
+                str=res.data[i][1]
+            } 
         }
-        console.log(stmt)
+        console.log(query)
     }
 })
+
+
 
 
 
