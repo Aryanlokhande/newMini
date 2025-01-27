@@ -1,5 +1,5 @@
 <<<<<<< HEAD
-/backend/node_modules
+./backend/node_modules
 ./backend/env
 /assignment allocation1.csv
 /assignment questions.csv
