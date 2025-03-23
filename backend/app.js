@@ -5,6 +5,8 @@ const express=require('express')
 const app=express()
 
 const {
+    updateMarks,
+    seeSubmission,
     deleteFile,
     semesterRegistration,
     uploadFile,
@@ -26,6 +28,7 @@ const {
     removeCurrentUser,
     getFloorDetails,
     showClass,
+    showSubjectsFaculty,
     showsubjects,
     subAndAssgnOfSpecClass,
     addAssignments,
@@ -48,11 +51,15 @@ const storage=mul.diskStorage({
 })
 const upload=mul({storage})
 
+app.put('/api/json/updatemarks',updateMarks)
+
 app.delete("/api/json/deletefile/:fname",deleteFile)
 
 app.post('/api/json/semeterregistration',upload.array('files',5),semesterRegistration)
 
 app.post('/api/json/uploadfile',upload.single('file'),uploadFile)
+
+app.get('/api/json/seesubmission/:faid',seeSubmission)
 
 app.post("/api/json/addnewfeedbackform",addNewFeedbackForm)
 
@@ -90,9 +97,11 @@ app.put('/api/json/updateasgndetails',updateAssignmentDetails)
 
 app.put('/api/json/assignmenttrack',addAssignments)
 
-app.get('/api/json/subAndAsgnInSpecClass/:username/:classname',subAndAssgnOfSpecClass)
+app.get('/api/json/subAndAsgnInSpecClass/:username/:classname/:subname',subAndAssgnOfSpecClass)
 
 // app.get('/api/json/studentassignment/:user/:sub_name',studentAssignments)
+
+app.get('/api/json/showsubjectsfaculty/:facName/:className',showSubjectsFaculty)
 
 app.get('/api/json/showsubjects/:username',showsubjects)
 

@@ -12,6 +12,53 @@ con.connect(error => {
     console.log('Connected to the MySQL database');
 });
 
+const updateMarks=(req,res)=>{
+    const toPut=req.body
+    if(toPut.grade!==undefined){
+        query=`
+        update assignment_submission1
+        set marks_given="${toPut.grade}"
+        where s_assignment_id="${toPut.specStudent}";
+        `
+        con.query(query,(err,result)=>{
+            if(err){
+                console.log(err)
+            }
+            else{
+                res.json({isSuccess: true})
+            }
+        })
+    }
+    else{
+        res.json({message: "Incorrect Value For grade", isSuccess: false})
+    }
+    
+}
+
+const seeSubmission=(req,res)=>{
+    const{faid}=req.params
+    let query=`
+    select s_assignment_id, marks_given, student_name,assignment_file_name,submission_date,deadline_date,datediff(deadline_date,submission_date) as submissionStat from assignment_submission1 asub
+    inner join assignment_allocation1 aa on aa.f_assignment_id=asub.f_assignment_id
+    inner join assignment_system_student st on st.student_id=asub.student_id
+    where asub.f_assignment_id=${faid};
+    `
+    con.query(query,(err,result)=>{
+        if(err){
+            console.log(err)
+        }
+        else{
+            res.json({
+                "notSubmitted": result.filter(ele=>ele.submissionStat===null),
+                "onTimeSubmission": result.filter(ele=>ele.submissionStat>=0 && ele.submissionStat!==null),
+                "lateSubmission": result.filter(ele=>ele.submissionStat<0),
+                "deadline_date": result[0].deadline_date
+            })          
+        }
+    })
+
+}
+
 const deleteFile=(req,res)=>{
     const {fname}=req.params
     const fpath=`../../my-app-3/public/${fname}`
@@ -128,7 +175,7 @@ const getAllFacultyReport=(req,res)=>{
     inner join assignment_system_classes c on c.class_id=m.class_id
     inner join assignment_system_subject s on s.subject_id=m.subject_id
     inner join question_responses q on q.merge_id=m.merge_id
-    where substr(question_id,locate("f",question_id))="${fnum}"
+    where q.feedback_form_id="${fnum}"
     group by m.merge_id
     order by class_name;
     `
@@ -185,7 +232,7 @@ const getFeedbackReport=(req,res)=>{
         let b=parseInt(fnum.slice(fnum.indexOf('f',1)+1))
         let query=`call select_range('` 
         while(a<=b){
-            query=query+`${a},`
+            query=query+`${a},` 
             a++
         }
         query=query+`;');`
@@ -204,17 +251,20 @@ const getFeedbackReport=(req,res)=>{
     }
     else{
         if(recO!=='0'){
-            let query=`
-            call multi_stmt(
-            'select * from feedback_form where substr(question_id,locate("f",question_id))="${fnum}"
-            order by cast(substr(question_id,9,locate("f",question_id)-1) as signed integer);\n`
+            let query=""
+            if(conf==='c'){
+                query=`
+                call multi_stmt('select * from sorted_feedback_questions where subject_type="${recO.slice(recO.length-1)==='_'?"theory":"practical"}";`
+            }
+            else if(conf==='p'){
+                query=`
+                call multi_stmt('select * from sorted_feedback_questions where subject_type="${rec.slice(rec.length-1)==='_'?"theory":"practical"}";`
+            }
             query=query+`
             select * from question_responses q
             inner join merge m on m.merge_id=q.merge_id
-            inner join feedback_tracker ft on ft.academic_year=m.academic_year and ft.semester=m.semester
-            where substr(question_id,locate("f",question_id))="${fnum}" 
-            and feedback_form_id="${fnum}"
-            and ${conf==='p'?`faculty_id="${rec.slice(0,rec.indexOf('p'))}" 
+            inner join feedback_tracker ft on ft.feedback_form_id=q.feedback_form_id
+            where ${conf==='p'?`faculty_id="${rec.slice(0,rec.indexOf('p'))}" 
                 and subject_id="${rec.slice(rec.indexOf('p')+1)}" 
                 and class_id="${recO}"`
                 :
@@ -242,20 +292,18 @@ const getFeedbackReport=(req,res)=>{
                 select m.merge_id,class_name,truncate(avg(overall),2) as final_res from merge m
                 inner join assignment_system_classes c on m.class_id=c.class_id 
                 inner join question_responses q on q.merge_id=m.merge_id
-                inner join feedback_tracker ft on ft.academic_year=m.academic_year and ft.semester=m.semester
-                where substr(question_id,locate("f",question_id))="${fnum}"
-                and feedback_form_id="${fnum}"
-                and faculty_id="${rec.slice(0,rec.indexOf('p'))}" and subject_id="${rec.slice(rec.indexOf('p')+1)}"
+                inner join feedback_tracker ft on ft.feedback_form_id=q.feedback_form_id
+                where faculty_id="${rec.slice(0,rec.indexOf('p'))}" and subject_id="${rec.slice(rec.indexOf('p')+1)}"
                 group by m.merge_id
                 order by cast(m.merge_id as signed);\n`
                 query=query+`
                 select m.merge_id,overall,t_r from question_responses q
                 inner join merge m on m.merge_id=q.merge_id
-                inner join feedback_tracker ft on ft.academic_year=m.academic_year and ft.semester=m.semester
-                where substr(question_id,locate("f",question_id))="${fnum}"
-                and feedback_form_id="${fnum}"
-                and faculty_id="${rec.slice(0,rec.indexOf('p'))}" 
+                inner join feedback_form f on f.feedback_form_id=q.feedback_form_id and f.question_id=q.question_id
+                inner join feedback_tracker ft on ft.feedback_form_id=m.feedback_form_id
+                where faculty_id="${rec.slice(0,rec.indexOf('p'))}" 
                 and subject_id="${rec.slice(rec.indexOf('p')+1)}"
+                and f.subject_type="${rec.slice(rec.length-1)==='_'?"theory":"practical"}"
                 order by cast(feedback_id as signed);\n`
             }
             else{
@@ -264,19 +312,15 @@ const getFeedbackReport=(req,res)=>{
                 inner join assignment_system_faculty f on f.faculty_id=fs.faculty_id 
                 inner join assignment_system_subject s on s.subject_id=fs.subject_id 
                 inner join question_responses q on q.merge_id=fs.merge_id
-                inner join feedback_tracker ft on ft.academic_year=fs.academic_year and ft.semester=fs.semester
-                where substr(question_id,locate("f",question_id))="${fnum}"
-                and feedback_form_id="${fnum}"
-                and class_id="${rec}"
+                inner join feedback_tracker ft on ft.feedback_form_id=fs.feedback_form_id and ft.feedback_form_id=q.feedback_form_id
+                where class_id="${rec}"
                 group by fs.merge_id
                 order by cast(fs.merge_id as signed);\n`
                 query=query+`
                 select m.merge_id,overall,t_r,question_id from question_responses q
                 inner join merge m on m.merge_id=q.merge_id
-                inner join feedback_tracker ft on ft.academic_year=m.academic_year and ft.semester=m.semester
-                where substr(question_id,locate("f",question_id))="${fnum}"
-                and feedback_form_id="${fnum}"
-                and class_id="${rec}"
+                inner join feedback_tracker ft on ft.feedback_form_id=m.feedback_form_id and ft.feedback_form_id=q.feedback_form_id
+                where class_id="${rec}"
                 order by cast(feedback_id as signed); \n`
             }
             query=query+`');` 
@@ -308,10 +352,10 @@ const getFacClassSubList=(req,res)=>{
     select distinct substr(s.subject_id,-1) as batch, f.faculty_id,merge_id,faculty_name,subject_name,s.subject_id,class_name,c.class_id,abbreviation from merge fs
     inner join assignment_system_faculty f on fs.faculty_id=f.faculty_id
     inner join assignment_system_subject s on fs.subject_id=s.subject_id
-    inner join feedback_tracker ft on ft.academic_year=fs.academic_year and ft.semester=fs.semester
+    inner join feedback_tracker ft on ft.feedback_form_id=fs.feedback_form_id
     inner join assignment_system_classes c on fs.class_id=c.class_id
-    where ${formId==='max'?"cast(substr(feedback_form_id,2) as signed)=(select max(cast(substr(feedback_form_id,2) as signed integer)) from feedback_tracker)"
-    :`feedback_form_id="${formId}"`};');
+    where ${formId==='max'?"cast(substr(ft.feedback_form_id,2) as signed)=(select max(cast(substr(feedback_form_id,2) as signed integer)) from feedback_tracker)"
+    :`ft.feedback_form_id="${formId}"`};');
     `
     con.query(query1,(error,resultArr)=>{
         if(error){
@@ -334,10 +378,10 @@ const putFeedback=(req,res)=>{
     const toPut=req.body
     let q=0,f=0,o=""
     let query=`call feedback_update('`
-    for(let i=0;i<Object.keys(toPut.selOpts).length;i++){
-        q=toPut.selOpts[i].slice(toPut.selOpts[i].indexOf('q')+1,toPut.selOpts[i].indexOf('f'))
-        f=toPut.selOpts[i].slice(toPut.selOpts[i].indexOf('f')+1,toPut.selOpts[i].indexOf('o'))
-        o=toPut.arrOfRes[toPut.selOpts[i].slice(toPut.selOpts[i].indexOf('o')+1,toPut.selOpts[i].length)].trim().replace(/ /g,"_")
+    for(i in Object.keys(toPut.selOpts)){
+        q=toPut.selOpts[Object.keys(toPut.selOpts)[i]].slice(toPut.selOpts[Object.keys(toPut.selOpts)[i]].indexOf('q')+1,toPut.selOpts[Object.keys(toPut.selOpts)[i]].indexOf('f'))
+        f=toPut.selOpts[Object.keys(toPut.selOpts)[i]].slice(toPut.selOpts[Object.keys(toPut.selOpts)[i]].indexOf('f')+1,toPut.selOpts[Object.keys(toPut.selOpts)[i]].indexOf('o'))
+        o=toPut.arrOfRes[toPut.selOpts[Object.keys(toPut.selOpts)[i]].slice(toPut.selOpts[Object.keys(toPut.selOpts)[i]].indexOf('o')+1,toPut.selOpts[Object.keys(toPut.selOpts)[i]].length)].trim().replace(/ /g,"_")
         query=query+`${o}@${f}#${parseInt(q)+1}!;`
     }
     query=query+`');`
@@ -355,19 +399,20 @@ const feedBackOfAStudent=(req,res)=>{
     const{username}=req.params
     let query=`
     call multi_stmt('
-    select * from sorted_feedback_questions limit 3;
-    select merge_id,faculty_name,subject_name,class_name from merge fs
+    select * from sorted_feedback_questions where subject_type="theory" limit 3;
+    select merge_id,faculty_name,subject_name,abbreviation,class_name,subject_type from merge fs
     inner join assignment_system_faculty f on fs.faculty_id=f.faculty_id
     inner join assignment_system_subject s on fs.subject_id=s.subject_id
     inner join assignment_system_classes c on fs.class_id=c.class_id
     inner join assignment_system_student st on st.class_id=c.class_id
-    inner join feedback_tracker ft on ft.academic_year=fs.academic_year and ft.semester=fs.semester
-    where cast(substr(feedback_form_id,2) as signed)=(select max(cast(substr(feedback_form_id,2) as signed)) from feedback_tracker)
+    inner join feedback_tracker ft on ft.feedback_form_id=fs.feedback_form_id
+    where cast(substr(ft.feedback_form_id,2) as signed)=(select max(cast(substr(feedback_form_id,2) as signed)) from feedback_tracker)
     and student_name="${username}" and (substr(s.subject_id,-1)="_" or substr(s.subject_id,-1)=batch);
     select isLaunched from feedback_tracker
     where substr(feedback_form_id,2)=(
     select max(cast(substr(feedback_form_id,2) as signed integer)) from feedback_tracker
     ); 
+    select * from sorted_feedback_questions where subject_type="practical" limit 3;
     ');
     `
     con.query(query,(error,result)=>{
@@ -375,7 +420,12 @@ const feedBackOfAStudent=(req,res)=>{
             console.log(error)
         }
         else{
-            res.json({faculties: result[1], questions: result[0], qlength:result[0].length, isLaunched: result[2][0]['isLaunched']})
+            let finalObj={faculties: result[1], questions:{theory: result[0],practical: result[3]}, isLaunched: result[2][0]['isLaunched'] }
+            let sum=0
+            Object.keys(finalObj.questions).forEach(ele=>{
+                sum+=finalObj.faculties.filter(e=>e.subject_type===ele).length*finalObj.questions[ele].length
+            })
+            res.json({...finalObj,feedbackLength: sum,qlength: result[0].length+result[3].length})
         }                
     })
 }
@@ -444,6 +494,26 @@ const getFloorDetails=(req,res)=>{
     con.query(query,(error,result)=>{
         if(error){
             console.log(`Error fetching data: ${error}`)
+        }
+        else{
+            res.json(result)
+        }
+    })
+}
+
+const showSubjectsFaculty=(req,res)=>{
+    const {facName,className}=req.params
+    let query=`
+    select subject_name, abbreviation from assignment_system_subject s
+    inner join merge m on m.subject_id=s.subject_id
+    inner join assignment_system_faculty f on f.faculty_id=m.faculty_id
+    inner join assignment_system_classes c on c.class_id=m.class_id
+    where class_name="${className}" and faculty_name="${facName}"; 
+    `
+
+    con.query(query,(err,result)=>{
+        if(err){
+            console.log(err)
         }
         else{
             res.json(result)
@@ -547,7 +617,7 @@ const showsubjects=(req,res)=>{
 
 
 const subAndAssgnOfSpecClass=(req,res)=>{
-    const{username,classname}=req.params
+    const{username,classname,subname}=req.params
     
     let query=`
     select f_assignment_id,subject_name,s.subject_id,subject_type,assignment_name,scheduled_date,isLocked,on_time,late_submission,not_submitted from assignment_allocation1 aa
@@ -555,7 +625,7 @@ const subAndAssgnOfSpecClass=(req,res)=>{
     inner join assignment_system_classes c on c.class_id=m.class_id
     inner join assignment_system_subject s on s.subject_id=m.subject_id
     inner join assignment_system_faculty f on m.faculty_id=f.faculty_id
-    where class_name="${classname}" and faculty_name="${username}";
+    where class_name="${classname}" and faculty_name="${username}" and subject_name="${subname}";
     `    
 
     con.query(query,(error,result)=>{
@@ -695,6 +765,8 @@ const removeCurrentUser=(req,res)=>{
 }
 
 module.exports={
+    updateMarks,
+    seeSubmission,
     deleteFile,
     semesterRegistration,
     uploadFile,
@@ -716,6 +788,7 @@ module.exports={
     removeCurrentUser,
     getFloorDetails,
     showClass,
+    showSubjectsFaculty,
     showsubjects,
     subAndAssgnOfSpecClass,
     addAssignments,
