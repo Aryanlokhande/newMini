@@ -135,14 +135,15 @@ function GenerateReport(){
     return(
         <div className="reportContainer">
             
-            <input type="checkbox" id="checkTableFaculty" />
-            <label htmlFor="checkTableFaculty" id="showFacultyTable">
-                    <div class="buttons margin" onClick={handleShowTogFac}>
-                        {togTableFaculty?"Show":"Hide"}
-                    </div>
-            </label>
             <div className="buttons gap">
-                Faculty
+                <h4>Faculty</h4>
+
+                <input type="checkbox" id="checkTableFaculty" />
+                <label htmlFor="checkTableFaculty" id="showFacultyTable">
+                        <div class="buttons margin" onClick={handleShowTogFac}>
+                            {togTableFaculty?"Show":"Hide"}
+                        </div>
+                </label>
             </div>
             <div className="facultyTableContainer" id="scaleHeight"> 
                 <table className="facultyTable" {...getTableProps()}>

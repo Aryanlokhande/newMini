@@ -6,8 +6,9 @@ function FolderUpload(){
     const[folder,setFolder]=useState()
 
     const handleFolderUpload=(event)=>{
-        const filesArray=Array.from(event.target.files)
-        setFolder(filesArray)
+        // const filesArray=Array.from(event.target.files)
+        // setFolder(filesArray)
+        console.log("hi");
     }
 
     const handleUploadClick=async()=>{
@@ -22,14 +23,9 @@ function FolderUpload(){
 
     return(
         <>
-            <div>
-                <p>Upload Assignment Question Folder: </p>
-                <input 
-                type="file" 
-                webkitdirectory="true"
-                multiple="true"
-                onChange={handleFolderUpload} />
-                <button onClick={handleUploadClick}>Upload</button>
+            <div className="upload-folder-screen">
+                <p>Upload Assignment Question Folder: <input type="file" webkitdirectory="true" multiple="true" onChange={handleFolderUpload}/></p>
+                <button className="upload-buttons" onClick={handleUploadClick}>Upload</button>
             </div>
         </>
     )

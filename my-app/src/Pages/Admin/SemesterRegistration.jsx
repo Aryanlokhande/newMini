@@ -17,21 +17,24 @@ function SemesterRegistration(){
     const handleStudentFileChange=(e)=>setStudFile(e.target.files[0])
 
     const handleFileUpload=()=>{
-        const formDataObj={
-            objId: 2,
-            "files":[facultyFile,,classFile,subjectFile,mergefile,studentFile]
-        }
+        // const formDataObj={
+        //     objId: 2,
+        //     "files":[facultyFile,,classFile,subjectFile,mergefile,studentFile]
+        // }
 
-        const edited= postFile(formDataObj,"http://localhost:3002/api/json/semeterregistrationassociations")
-        console.log(edited)
-        if(edited.status==200){
-            navigate(../folderupload)
-        }
+        // const edited= postFile(formDataObj,"http://localhost:3002/api/json/semeterregistrationassociations")
+        // console.log(edited)
+        // if(edited.status==200){
+            // }
+            console.log("hi");
+            navigate("../folderupload")
+
     }
 
     return(
         <>
-            Upload csv files for the following
+        <div className="semRegistrationContainer">
+            <h3>Upload csv files for the following</h3>
             <div className="upload-csv">
                 <label htmlFor="facultyFile">Faculty Information: </label>
                 <input type="file" id="facultyFile" onChange={handleFacultyFileChange}/> 
@@ -52,7 +55,8 @@ function SemesterRegistration(){
                 <label htmlFor="studFile">Student Information: </label>
                 <input type="file" id="studFile" onChange={handleStudentFileChange}/> 
             </div>
-            <button onClick={handleFileUpload}>Upload</button>            
+            <button className="upload-buttons" onClick={handleFileUpload}>Upload</button>            
+        </div>
         </>
     )
 }
