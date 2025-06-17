@@ -27,7 +27,7 @@ function StudentLayout(){
         <>
             <div className="container">
                 <div className="box banner">
-                    <div className="logo"><img src="/WhatsApp Image 2025-02-10 at 10.18.54_4660d668.jpg" alt="MIT_logo" /></div>
+                    <div className="logo"><img src="\MIT_logo3.jpg" alt="MIT_logo" /></div>
                     <div className="stud">
                         <div className="name-class">
                             <p id="name">{username}</p>
